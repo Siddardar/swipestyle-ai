@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras.models import load_model
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from supabase import create_client, Client
 
 from main import PreProcessData
@@ -15,7 +15,7 @@ model_path = 'swipestyle-ai.keras'
 model = load_model(model_path)
 
 # Load user and clothing data
-load_dotenv('env/.env')
+load_dotenv(find_dotenv())
 
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")
