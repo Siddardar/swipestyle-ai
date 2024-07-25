@@ -43,6 +43,19 @@ def recommend():
 
     return jsonify(recommended_items)
 
+@app.route('/createUser', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    user_name = data['user_name']
+
+    if user_name in usernames:
+        return jsonify({"message": "User already exists!"})
+
+    user_id = len(usernames)
+    usernames[user_name] = user_id
+
+    return jsonify({"message": "User created!"})
+
 @app.route('/update', methods=['POST'])
 def update():
     data = request.get_json()
@@ -54,9 +67,6 @@ def update():
 
     for user in new_user_data:
         user_id = usernames.get(user["id"])
-        if user_id is None:
-            user_id = len(usernames)
-            usernames[user["id"]] = user_id
 
         for item in user["liked_items"]:
             item_id = clothes.get(item["productID"])
