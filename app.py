@@ -100,8 +100,11 @@ def recommend():
 
     user_index = usernames[user_id]
 
-    user_vector = model.get_layer('embedding').get_weights()[0][user_index]
-    item_vectors = model.get_layer('embedding_1').get_weights()[0]
+    user_embedding_layer = get_embedding_layer(model, 0)
+    user_vector = user_embedding_layer.get_weights()[0][user_index]
+
+    item_embedding_layer = get_embedding_layer(model, 1)
+    item_vectors = item_embedding_layer.get_weights()[0]
 
     scores = np.dot(item_vectors, user_vector)
 
