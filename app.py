@@ -35,6 +35,15 @@ def load_global_model():
 
 load_global_model()
 
+def get_embedding_layer(model, index):
+    count = 0
+    for layer in model.layers:
+        if isinstance(layer, Embedding):
+            if count == index:
+                return layer
+            count += 1
+    return None
+
 
 def create_model(num_users, num_items, num_brands, num_genders, embedding_size=50, reg_strength=1e-3, dropout_rate=0.5):
     regularizer = l2(reg_strength)
@@ -109,19 +118,6 @@ def recommend():
         
 
     return jsonify(recommended_items)
-
-@app.route('/createUser', methods=['POST'])
-def create_user():
-    data = request.get_json()
-    user_id = data['user_id']
-    
-    if user_id in usernames:
-        return jsonify({"message": "User already exists!"})
-
-    user_id = len(usernames)
-    usernames[user_id] = user_id
-
-    return jsonify({"message": "User created!"})
 
 # Route to update the model with new data
 @app.route('/update', methods=['POST'])
@@ -198,10 +194,10 @@ def update():
         return jsonify({"error": "No data to update"}), 400
 
     # Gather all old and new entities
-    num_old_users = model.get_layer(name='embedding').input_dim
-    num_old_items = model.get_layer(name='embedding_1').input_dim
-    num_old_brands = model.get_layer(name='embedding_2').input_dim
-    num_old_genders = model.get_layer(name='embedding_3').input_dim
+    num_old_users = get_embedding_layer(model, 0).input_dim
+    num_old_items = get_embedding_layer(model, 1).input_dim
+    num_old_brands = get_embedding_layer(model, 2).input_dim
+    num_old_genders = get_embedding_layer(model, 3).input_dim
 
     num_new_users = len(usernames)
     num_new_items = len(clothes)
@@ -224,26 +220,12 @@ def update():
     new_model = create_model(num_users, num_items, num_brands, num_genders)
 
     # Transfer weights
-    old_user_weights = model.get_layer(name='embedding').get_weights()[0]
-    new_user_weights = new_model.get_layer(name='embedding').get_weights()[0]
-    new_user_weights[:old_user_weights.shape[0], :] = old_user_weights
+    for i in range(4):  # Assuming 4 embedding layers: user, item, brand, gender
+        old_weights = get_embedding_layer(model, i).get_weights()[0]
+        new_weights = get_embedding_layer(new_model, i).get_weights()[0]
+        new_weights[:old_weights.shape[0], :] = old_weights
+        get_embedding_layer(new_model, i).set_weights([new_weights])
 
-    old_item_weights = model.get_layer(name='embedding_1').get_weights()[0]
-    new_item_weights = new_model.get_layer(name='embedding_1').get_weights()[0]
-    new_item_weights[:old_item_weights.shape[0], :] = old_item_weights
-
-    old_brand_weights = model.get_layer(name='embedding_2').get_weights()[0]
-    new_brand_weights = new_model.get_layer(name='embedding_2').get_weights()[0]
-    new_brand_weights[:old_brand_weights.shape[0], :] = old_brand_weights
-
-    old_gender_weights = model.get_layer(name='embedding_3').get_weights()[0]
-    new_gender_weights = new_model.get_layer(name='embedding_3').get_weights()[0]
-    new_gender_weights[:old_gender_weights.shape[0], :] = old_gender_weights
-
-    new_model.get_layer(name='embedding').set_weights([new_user_weights])
-    new_model.get_layer(name='embedding_1').set_weights([new_item_weights])
-    new_model.get_layer(name='embedding_2').set_weights([new_brand_weights])
-    new_model.get_layer(name='embedding_3').set_weights([new_gender_weights])
 
     # Incrementally train the new model
     new_model.fit([user_ids_array, item_ids_array, brand_ids_array, gender_ids_array], labels_array, epochs=1, verbose=1)
