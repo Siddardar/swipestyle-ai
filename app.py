@@ -219,13 +219,16 @@ def update():
     # Create a new model with updated embedding sizes
     new_model = create_model(num_users, num_items, num_brands, num_genders)
 
-    # Transfer weights
     for i in range(4):  # Assuming 4 embedding layers: user, item, brand, gender
         old_weights = get_embedding_layer(model, i).get_weights()[0]
         new_weights = get_embedding_layer(new_model, i).get_weights()[0]
+
+        # If old weights are larger, resize new_weights
+        if old_weights.shape[0] > new_weights.shape[0]:
+            new_weights = np.resize(new_weights, old_weights.shape)
+
         new_weights[:old_weights.shape[0], :] = old_weights
         get_embedding_layer(new_model, i).set_weights([new_weights])
-
 
     # Incrementally train the new model
     new_model.fit([user_ids_array, item_ids_array, brand_ids_array, gender_ids_array], labels_array, epochs=1, verbose=1)
